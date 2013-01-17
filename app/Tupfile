@@ -1,0 +1,9 @@
+tup.definerule
+{
+	inputs = {'renluacairo.cxx'}, 
+	outputs = {'renluacairo'}, 
+	command = 'g++-4.7 -Wall -Wextra -pedantic --std=c++11 ' .. tup.getconfig('CFLAGS') .. 
+		' renluacairo.cxx ' ..
+		tup.getconfig('LDFLAGS') .. '-lcairo -llua5.2 ' ..
+		'-o renluacairo'
+}
