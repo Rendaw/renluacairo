@@ -1,9 +1,27 @@
+local CompileBase = 'g++-4.7 -Wall -Wextra -pedantic --std=c++11 -ggdb -O0 -c -fPIC -fpic '
+local LinkBase = 'g++-4.7 '
+
 tup.definerule
 {
-	inputs = {'renluacairo.cxx'}, 
-	outputs = {'renluacairo'}, 
-	command = 'g++-4.7 -Wall -Wextra -pedantic --std=c++11 ' .. tup.getconfig('CFLAGS') .. 
-		' renluacairo.cxx ' ..
-		tup.getconfig('LDFLAGS') .. '-lcairo -llua5.2 ' ..
-		'-o renluacairo'
+	inputs = {'binding.cxx'},
+	outputs = {'binding.o'},
+	command = CompileBase .. tup.getconfig('CFLAGS') .. ' binding.cxx -o binding.o'
+}
+tup.definerule
+{
+	inputs = {'standalone.cxx'},
+	outputs = {'standalone.o'},
+	command = CompileBase .. tup.getconfig('CFLAGS') .. ' standalone.cxx -o standalone.o'
+}
+tup.definerule
+{
+	inputs = {'binding.o'}, 
+	outputs = {'cairo.so'}, 
+	command = LinkBase .. '-shared binding.o ' .. tup.getconfig('LDFLAGS') .. ' -o cairo.so'
+}
+tup.definerule
+{
+	inputs = {'standalone.o', 'binding.o'}, 
+	outputs = {'cairolua'}, 
+	command = LinkBase .. 'standalone.o binding.o ' .. tup.getconfig('LDFLAGS') .. ' -o cairolua'
 }
