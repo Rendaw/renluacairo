@@ -22,6 +22,6 @@ tup.definerule
 tup.definerule
 {
 	inputs = {'standalone.o', 'binding.o'}, 
-	outputs = {'cairolua'}, 
-	command = LinkBase .. 'standalone.o binding.o ' .. tup.getconfig('LDFLAGS') .. ' -o cairolua'
+	outputs = {'luacairo'}, 
+	command = LinkBase .. 'standalone.o binding.o ' .. tup.getconfig('LDFLAGS') .. ' -o luacairo'
 }

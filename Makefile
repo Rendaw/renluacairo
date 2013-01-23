@@ -2,7 +2,7 @@ CompileBase=g++-4.7 -Wall -Wextra -pedantic --std=c++11 -ggdb -O0 -c -fPIC -fpic
 LinkBase=g++-4.7 
 LDFLAGS=`pkg-config --libs lua5.2` `pkg-config --libs cairo`
 
-all: build/cairolua build/cairo.so
+all: build/luacairo build/cairo.so
 
 build: 
 	mkdir build
@@ -13,8 +13,8 @@ build/binding.o: build app/binding.cxx
 build/standalone.o: build app/standalone.cxx
 	$(CompileBase) app/standalone.cxx -o build/standalone.o
 
-build/cairolua: build build/standalone.o build/binding.o
-	$(LinkBase) build/standalone.o build/binding.o $(LDFLAGS) -o build/cairolua
+build/luacairo: build build/standalone.o build/binding.o
+	$(LinkBase) build/standalone.o build/binding.o $(LDFLAGS) -o build/luacairo
 
 build/cairo.so: build build/binding.o
 	$(LinkBase) -shared build/binding.o $(LDFLAGS) -o build/cairo.so
