@@ -55,64 +55,6 @@ template <typename Type> size_t TypeIDLength(void)
 	return Length;
 }
 
-//-- Metatable tools
-template <typename PopulatorType> void CreateMetatable(lua_State *State, void *TypeUID, PopulatorType const &Populator)
-{
-#ifndef NDEBUG
-	unsigned int const InitialHeight = lua_gettop(State);
-#endif
-	// Create method table
-	lua_newtable(State);
-	Populator();
-
-	// Create metatable that points to method table
-	lua_pushlightuserdata(State, TypeUID);
-	lua_newtable(State);
-	lua_pushstring(State, "__index");
-	lua_pushvalue(State, -4);
-	lua_settable(State, -3);
-	lua_settable(State, LUA_REGISTRYINDEX);
-
-	// Pop extra reference to method table
-	lua_pop(State, 1);
-#ifndef NDEBUG
-	assert((unsigned int)lua_gettop(State) == InitialHeight);
-#endif
-}
-
-inline void SetMetatable(lua_State *State, void *TypeUID)
-{
-#ifndef NDEBUG
-	unsigned int InitialHeight = lua_gettop(State);
-#endif
-	lua_pushlightuserdata(State, TypeUID);
-	lua_gettable(State, LUA_REGISTRYINDEX);
-	assert(!lua_isnil(State, -1)); // No metatable for this UUID
-	lua_setmetatable(State, -2);
-#ifndef NDEBUG
-	assert((unsigned int)lua_gettop(State) == InitialHeight);
-#endif
-}
-
-inline void SetMetatableGarbageCollector(lua_State *State, void *TypeUID, lua_CFunction Function)
-{
-#ifndef NDEBUG
-	unsigned int InitialHeight = lua_gettop(State);
-#endif
-	lua_pushlightuserdata(State, TypeUID);
-	lua_gettable(State, LUA_REGISTRYINDEX);
-	assert(!lua_isnil(State, -1)); // No metatable for this UUID
-
-	lua_pushstring(State, "__gc");
-	lua_pushcfunction(State, Function);
-	lua_settable(State, -3);
-
-	lua_pop(State, 1);
-#ifndef NDEBUG
-	assert((unsigned int)lua_gettop(State) == InitialHeight);
-#endif
-}
-
 //-- Templatized Lua stack IO
 template <typename Type> struct LuaValue
 {
@@ -171,6 +113,7 @@ template <> struct LuaValue<char const *>
 		{ lua_pushstring(State, Value); }
 };
 
+inline void SetMetatable(lua_State *State, void *TypeUID);
 template <typename Type> struct LuaValue<Type *>
 {
 	static Type *Read(lua_State *State, int Position)
@@ -244,6 +187,93 @@ template <typename Type> struct LuaValue<Type *>
 #endif
 	}
 };
+
+//-- Metatable tools
+template <typename PopulatorType> void CreateMetatable(lua_State *State, void *TypeUID, PopulatorType const &Populator)
+{
+#ifndef NDEBUG
+	unsigned int const InitialHeight = lua_gettop(State);
+#endif
+	// Create method table
+	lua_newtable(State);
+	Populator();
+
+	// Create metatable that points to method table
+	lua_pushlightuserdata(State, TypeUID);
+	lua_newtable(State);
+	lua_pushstring(State, "__index");
+	lua_pushvalue(State, -4);
+	lua_settable(State, -3);
+	lua_settable(State, LUA_REGISTRYINDEX);
+
+	// Pop extra reference to method table
+	lua_pop(State, 1);
+#ifndef NDEBUG
+	assert((unsigned int)lua_gettop(State) == InitialHeight);
+#endif
+}
+
+inline void SetMetatable(lua_State *State, void *TypeUID)
+{
+#ifndef NDEBUG
+	unsigned int InitialHeight = lua_gettop(State);
+#endif
+	lua_pushlightuserdata(State, TypeUID);
+	lua_gettable(State, LUA_REGISTRYINDEX);
+	assert(!lua_isnil(State, -1)); // No metatable for this UUID
+	lua_setmetatable(State, -2);
+#ifndef NDEBUG
+	assert((unsigned int)lua_gettop(State) == InitialHeight);
+#endif
+}
+
+template <typename... Catchall> struct DestructorCallback {};
+
+template <typename InputType> struct DestructorCallback<void, InputType>
+{
+	static int Callback(lua_State *State)
+	{
+		typedef void (*FunctionType)(InputType);
+		FunctionType Function = FromVoidPointer<FunctionType>(lua_touserdata(State, lua_upvalueindex(1)));
+		InputType Input = LuaValue<InputType>::Read(State, 1);
+		Function(Input);
+		return 0;
+	}
+
+	static void PushCallback(lua_State *State, void (*Function)(InputType))
+	{
+		lua_pushlightuserdata(State, ToVoidPointer(Function));
+		lua_pushcclosure(State, Callback, 1);
+	}
+};
+
+template <> struct DestructorCallback<int, lua_State *>
+{
+	static void PushCallback(lua_State *State, lua_CFunction Function)
+	{
+		lua_pushcfunction(State, Function);
+	}
+};
+
+template <typename ReturnType, typename InputType> void SetMetatableGarbageCollector(lua_State *State, void *TypeUID, ReturnType (*Function)(InputType))
+{
+#ifndef NDEBUG
+	unsigned int InitialHeight = lua_gettop(State);
+#endif
+	lua_pushlightuserdata(State, TypeUID);
+	lua_gettable(State, LUA_REGISTRYINDEX);
+	assert(!lua_isnil(State, -1)); // No metatable for this UUID
+
+	lua_pushstring(State, "__gc");
+	DestructorCallback<ReturnType, InputType>::PushCallback(State, Function);
+	lua_settable(State, -3);
+
+	lua_pop(State, 1);
+#ifndef NDEBUG
+	assert((unsigned int)lua_gettop(State) == InitialHeight);
+#endif
+}
+
 
 //-- Regular function registration
 template <typename... Catchall> struct CallWrapper {};
@@ -368,15 +398,16 @@ namespace MultipleReturn
 	// This also lets us optimistically handle input/output functions (pointer arguments used for input and output)
 	// -- Arguments are read (if available) in reverse order from the top of the stack and initialize the output storage
 	// Note: Output/IO parameters are reversed using the ReverseTuple type above, so all further processing is actually in reverse order (back to front).
-	template <bool Initialize, typename... Catchall> struct CallWrapper 
-	{
-		void Call(void) {} // DEBUG remove this when it compiles
-	};
+	template <bool Initialize, typename... Catchall> struct CallWrapper { };
+	
+	template <bool Initialize, typename... Catchall> struct RegistrationCallback {};
 
+	// Non-void return specializations
 	template 
 	<
 		bool Initialize,
 		typename FunctionType,
+		typename ReturnType,
 		typename InputType,
 		typename UnallocatedType,
 		typename... UnallocatedTypes,
@@ -384,6 +415,7 @@ namespace MultipleReturn
 	> struct CallWrapper<
 		Initialize, 
 		FunctionType, 
+		ReturnType,
 		InputType, 
 		std::tuple<UnallocatedType *, UnallocatedTypes...>, 
 		std::tuple<OutputTypes...> > 
@@ -399,6 +431,94 @@ namespace MultipleReturn
 			unsigned int Read = CallWrapper<
 				Initialize,
 				FunctionType, 
+				ReturnType,
+				InputType,
+				std::tuple<UnallocatedTypes...>, 
+				std::tuple<UnallocatedType *, OutputTypes...> 
+				>::Call(Function, State, Input, Count + 1, &Storage, AllocatedPointers...);
+			LuaValue<UnallocatedType>::Write(State, nullptr, Storage);
+			return Read;
+		}
+	};
+
+	template
+	<
+		bool Initialize,
+		typename FunctionType,
+		typename ReturnType,
+		typename InputType,
+		typename... OutputTypes
+	> struct CallWrapper<
+		Initialize, 
+		FunctionType, 
+		ReturnType,
+		InputType, 
+		std::tuple<>, 
+		std::tuple<OutputTypes...> >
+	{
+		static unsigned int Call(FunctionType Function, lua_State *State, InputType const &Input, unsigned int Count, OutputTypes... AllocatedPointers)
+		{
+			ReturnType Return = Function(Input, AllocatedPointers...);
+			lua_settop(State, 0);
+			LuaValue<ReturnType>::Write(State, nullptr, Return);
+			return 1 + Count;
+		}
+	};
+
+	template 
+	<
+		bool Initialize, 
+		typename ReturnType,
+		typename InputType, 
+		typename... UnallocatedTypes, 
+		typename... OutputTypes
+	> struct RegistrationCallback<Initialize, ReturnType, InputType, std::tuple<UnallocatedTypes...>, std::tuple<OutputTypes...> >
+	{
+		static int Callback(lua_State *State)
+		{
+			typedef ReturnType (*FunctionType)(InputType, OutputTypes...);
+			FunctionType Function = FromVoidPointer<FunctionType>(lua_touserdata(State, lua_upvalueindex(1)));
+			InputType Input = LuaValue<InputType>::Read(State, 1);
+			return CallWrapper<
+				Initialize, 
+				FunctionType, 
+				ReturnType, 
+				InputType, 
+				std::tuple<UnallocatedTypes...>, 
+				std::tuple<> >::Call(Function, State, Input, 0);
+		}
+	};
+	
+
+	// Void return type specializations
+	template 
+	<
+		bool Initialize,
+		typename FunctionType,
+		typename InputType,
+		typename UnallocatedType,
+		typename... UnallocatedTypes,
+		typename... OutputTypes
+	> struct CallWrapper<
+		Initialize, 
+		FunctionType, 
+		void,
+		InputType, 
+		std::tuple<UnallocatedType *, UnallocatedTypes...>, 
+		std::tuple<OutputTypes...> > 
+	{
+		static unsigned int Call(FunctionType Function, lua_State *State, InputType const &Input, unsigned int Count, OutputTypes... AllocatedPointers)
+		{
+			UnallocatedType Storage;
+			if (Initialize)
+			{
+				Storage = LuaValue<UnallocatedType>::Read(State, -1);
+				lua_pop(State, 1);
+			}
+			unsigned int Read = CallWrapper<
+				Initialize,
+				FunctionType, 
+				void,
 				InputType,
 				std::tuple<UnallocatedTypes...>, 
 				std::tuple<UnallocatedType *, OutputTypes...> 
@@ -417,6 +537,7 @@ namespace MultipleReturn
 	> struct CallWrapper<
 		Initialize, 
 		FunctionType, 
+		void,
 		InputType, 
 		std::tuple<>, 
 		std::tuple<OutputTypes...> >
@@ -429,39 +550,42 @@ namespace MultipleReturn
 		}
 	};
 
-	template <bool Initialize, typename... Catchall> struct RegistrationCallback {};
-
 	template 
 	<
 		bool Initialize, 
 		typename InputType, 
 		typename... UnallocatedTypes, 
 		typename... OutputTypes
-	> struct RegistrationCallback<Initialize, InputType, std::tuple<UnallocatedTypes...>, std::tuple<OutputTypes...> >
+	> struct RegistrationCallback<Initialize, void, InputType, std::tuple<UnallocatedTypes...>, std::tuple<OutputTypes...> >
 	{
 		static int Callback(lua_State *State)
 		{
 			typedef void (*FunctionType)(InputType, OutputTypes...);
 			FunctionType Function = FromVoidPointer<FunctionType>(lua_touserdata(State, lua_upvalueindex(1)));
 			InputType Input = LuaValue<InputType>::Read(State, 1);
-			return CallWrapper<Initialize, FunctionType, InputType, /*std::tuple<>,*/ std::tuple<UnallocatedTypes...>, std::tuple<> >::Call(Function, State, Input, 0);
+			return CallWrapper<
+				Initialize, 
+				FunctionType, 
+				void, 
+				InputType, 
+				std::tuple<UnallocatedTypes...>, 
+				std::tuple<> >::Call(Function, State, Input, 0);
 		}
 	};
 
-	template <typename InputType, typename... OutputTypes> void Register(
-		lua_State *State, char const *Name, void (*Function)(InputType *, OutputTypes...))
+	template <typename ReturnType, typename InputType, typename... OutputTypes> void Register(
+		lua_State *State, char const *Name, ReturnType (*Function)(InputType, OutputTypes...))
 	{
 		// Registers a function that uses pointers to output multiple values.
 		// Assumes:
-		// 1. void return type
-		// 2. First argument is an input
-		// 3. Second+ arguments are outputs, using pointers
+		// . First argument is an input
+		// . Second+ arguments are outputs, using pointers
 #ifndef NDEBUG
 		unsigned int const InitialHeight = lua_gettop(State);
 #endif
 		lua_pushstring(State, Name);
 		lua_pushlightuserdata(State, ToVoidPointer(Function));
-		lua_pushcclosure(State, RegistrationCallback<false, InputType, typename ReverseTuple<std::tuple<OutputTypes...>, std::tuple<> >::Tuple, std::tuple<OutputTypes...> >::Callback, 1);
+		lua_pushcclosure(State, RegistrationCallback<false, ReturnType, InputType, typename ReverseTuple<std::tuple<OutputTypes...>, std::tuple<> >::Tuple, std::tuple<OutputTypes...> >::Callback, 1);
 		lua_settable(State, -3);
 #ifndef NDEBUG
 		assert((unsigned int)lua_gettop(State) == InitialHeight);
@@ -471,20 +595,19 @@ namespace MultipleReturn
 
 namespace InputOutput
 {
-	template <typename InputType, typename... OutputTypes> void Register(
-		lua_State *State, char const *Name, void (*Function)(InputType, OutputTypes...))
+	template <typename ReturnType, typename InputType, typename... OutputTypes> void Register(
+		lua_State *State, char const *Name, ReturnType (*Function)(InputType, OutputTypes...))
 	{
 		// Registers a function that uses pointers to input and output multiple values.
 		// Assumes:
-		// 1. void return type
-		// 2. First argument is an input
-		// 3. Second+ arguments are both inputs and outputs, using pointers
+		// . First argument is an input
+		// . Second+ arguments are both inputs and outputs, using pointers
 #ifndef NDEBUG
 		unsigned int const InitialHeight = lua_gettop(State);
 #endif
 		lua_pushstring(State, Name);
 		lua_pushlightuserdata(State, ToVoidPointer(Function));
-		lua_pushcclosure(State, ::MultipleReturn::RegistrationCallback<true, InputType, std::tuple<OutputTypes...>, std::tuple<OutputTypes...> >::Callback, 1);
+		lua_pushcclosure(State, ::MultipleReturn::RegistrationCallback<true, ReturnType, InputType, std::tuple<OutputTypes...>, std::tuple<OutputTypes...> >::Callback, 1);
 		lua_settable(State, -3);
 #ifndef NDEBUG
 		assert((unsigned int)lua_gettop(State) == InitialHeight);
