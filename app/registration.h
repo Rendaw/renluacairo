@@ -447,8 +447,8 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "rotate", cairo_matrix_rotate);
 		Register(State, "invert", cairo_matrix_invert);
 		Register(State, "multiply", cairo_matrix_multiply);
-		//Register(State, "transformdistance", cairo_matrix_transform_distance); // TODO Input/output
-		//Register(State, "transformpoint", cairo_matrix_transform_point); // TODO Input/output
+		InputOutput::Register(State, "transformdistance", cairo_matrix_transform_distance); // TODO Input/output
+		InputOutput::Register(State, "transformpoint", cairo_matrix_transform_point); // TODO Input/output
 	});
 	SetMetatableGarbageCollector(State, ToVoidPointer(CreateMatrix), DestroyMatrix);
 	Register(State, "matrix", CreateMatrix);
