@@ -19,9 +19,17 @@ extern "C"
 
 // Various
 typedef uint8_t *UID;
-template <typename KeyType, KeyType Key> struct UIDWrapper { static uint8_t Value; };
-template <typename KeyType, KeyType Key> uint8_t UIDWrapper<KeyType, Key>::Value = 7;
-#define AsUID(Function) &UIDWrapper<decltype(&Function), Function>::Value
+
+class UIDObject
+{
+		uint8_t Value;
+	public:
+		operator UID(void) { return &Value; }
+};
+
+template <typename KeyType, KeyType *Key> struct UIDWrapper { static uint8_t Value; };
+template <typename KeyType, KeyType *Key> uint8_t UIDWrapper<KeyType, Key>::Value = 7;
+#define AsUID(Function) &UIDWrapper<decltype(Function), Function>::Value
 
 template <typename Base> struct PointerWithoutConst { typedef Base *Type; };
 template <typename Base> struct PointerWithoutConst<Base const *> { typedef Base *Type; };
@@ -38,7 +46,7 @@ template <typename... Done> struct ReverseTuple<std::tuple<>, std::tuple<Done...
 	typedef std::tuple<Done...> Tuple;
 };
 
-static_assert(sizeof(void (*)(void)) == sizeof(void *), "Function and data pointers are of different sizes.  We need to store function pointers as data pointers in Lua.");
+/*static_assert(sizeof(void (*)(void)) == sizeof(void *), "Function and data pointers are of different sizes.  We need to store function pointers as data pointers in Lua.");
 template <typename Type> void *ToVoidPointer(Type In) 
 {
 	static_assert(sizeof(Type) == sizeof(void *), "Unsafe pointer conversion.");
@@ -53,7 +61,7 @@ template <typename Type> Type FromVoidPointer(void *In)
 	Type Out; 
 	*reinterpret_cast<void **>(&Out) = In;
 	return Out; 
-}
+}*/
 
 template <typename Type> size_t TypeIDLength(void)
 {
@@ -116,7 +124,7 @@ template <typename Type> struct LuaValue
 		return (Type)lua_tonumber(State, Position);
 	}
 
-	static void Write(lua_State *State, void *, Type const &Value)
+	static void Write(lua_State *State, UID, Type const &Value)
 	{
 		// No specialized write function implemented for this type.
 	       	lua_pushinteger(State, Value); 
@@ -132,7 +140,7 @@ template <> struct LuaValue<double>
 		return lua_tonumber(State, Position);
 	}
 
-	static void Write(lua_State *State, void *, double const &Value)
+	static void Write(lua_State *State, UID, double const &Value)
 		{ lua_pushnumber(State, Value); }
 };
 
@@ -145,7 +153,7 @@ template <> struct LuaValue<char *>
 		return lua_tostring(State, Position);
 	}
 
-	static void Write(lua_State *State, void *, char * const &Value)
+	static void Write(lua_State *State, UID, char * const &Value)
 		{ lua_pushstring(State, Value); }
 };
 
@@ -158,11 +166,11 @@ template <> struct LuaValue<char const *>
 		return lua_tostring(State, Position);
 	}
 
-	static void Write(lua_State *State, void *, char const * const &Value)
+	static void Write(lua_State *State, UID, char const * const &Value)
 		{ lua_pushstring(State, Value); }
 };
 
-inline void SetMetatable(lua_State *State, void *TypeUID);
+inline void SetMetatable(lua_State *State, UID TypeUID);
 template <typename Type> struct LuaValue<Type *>
 {
 	static Type *Read(lua_State *State, int Position)
@@ -213,7 +221,7 @@ template <typename Type> struct LuaValue<Type *>
 		}
 	}
 
-	static void Write(lua_State *State, void *TypeUID, Type *const &Value)
+	static void Write(lua_State *State, UID TypeUID, Type *const &Value)
 	{
 #ifndef NDEBUG
 		assert(TypeUID != nullptr);
@@ -238,7 +246,7 @@ template <typename Type> struct LuaValue<Type *>
 };
 
 //-- Metatable tools
-template <typename PopulatorType> void CreateMetatable(lua_State *State, void *TypeUID, PopulatorType const &Populator)
+template <typename PopulatorType> void CreateMetatable(lua_State *State, UID TypeUID, PopulatorType const &Populator)
 {
 #ifndef NDEBUG
 	unsigned int const InitialHeight = lua_gettop(State);
@@ -262,7 +270,7 @@ template <typename PopulatorType> void CreateMetatable(lua_State *State, void *T
 #endif
 }
 
-inline void SetMetatable(lua_State *State, void *TypeUID)
+inline void SetMetatable(lua_State *State, UID TypeUID)
 {
 #ifndef NDEBUG
 	unsigned int InitialHeight = lua_gettop(State);
@@ -295,7 +303,7 @@ namespace MetatableGarbageCollector
 		constexpr static lua_CFunction Callback = Function;
 	};
 
-	template <typename FunctionType, FunctionType Function> void Set(lua_State *State, void *TypeUID)
+	template <typename FunctionType, FunctionType Function> void Set(lua_State *State, UID TypeUID)
 	{
 #ifndef NDEBUG
 		unsigned int InitialHeight = lua_gettop(State);
@@ -382,10 +390,11 @@ namespace SingleReturn
 			typedef ReturnType (FunctionType)(ArgumentTypes...);
 			ReturnType ReturnValue = CallWrapper<FunctionType, Function, ReturnType, std::tuple<ArgumentTypes...>, std::tuple<> >::Call(State, 1);
 
-			void *TypeUID;
+			UID TypeUID;
 			if (lua_isuserdata(State, lua_upvalueindex(1)))
-				TypeUID = lua_touserdata(State, lua_upvalueindex(1));
-			else TypeUID = ToVoidPointer(Function);
+				TypeUID = (UID)lua_touserdata(State, lua_upvalueindex(1));
+			//else TypeUID = AsUID(Function);
+			else TypeUID = (UID)Function;
 			LuaValue<ReturnType>::Write(State, TypeUID, ReturnValue);
 			return 1;
 		}
@@ -438,7 +447,7 @@ namespace SingleReturn
 	<
 		typename FunctionType,
 		FunctionType *Function
-	> void RegisterInternal(lua_State *State, char const *Name, void *ReturnTypeUID = nullptr)
+	> void RegisterInternal(lua_State *State, char const *Name, UID ReturnTypeUID = nullptr)
 	{
 #ifndef NDEBUG
 		unsigned int const InitialHeight = lua_gettop(State);

@@ -232,9 +232,9 @@ inline void RegisterEverything(lua_State *State)
 		{"RGB16565", CAIRO_FORMAT_RGB16_565}
 	});
 	
-	static char PatternMetatable;
+	static UIDObject PatternMetatable;
 	
-	CreateMetatable(State, ToVoidPointer(cairo_create), [&](void)
+	CreateMetatable(State, AsUID(cairo_create), [&](void)
 	{
 		//Register(State, "reference", cairo_reference); // Useful?
 		//Register(State, "destroy", cairo_destroy); // Useful?
@@ -251,7 +251,7 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "setsourcergba", cairo_set_source_rgba);
 		Register(State, "setsource", cairo_set_source);
 		Register(State, "setsourcesurface", cairo_set_source_surface);
-		RegisterWithMetatable(State, "getsource", Reference(cairo_get_source, cairo_pattern_reference), ToVoidPointer(&PatternMetatable));
+		RegisterWithMetatable(State, "getsource", Reference(cairo_get_source, cairo_pattern_reference), (UID)PatternMetatable);
 		Register(State, "setantialias", cairo_set_antialias);
 		Register(State, "getantialias", cairo_get_antialias);
 		Register(State, "setdash", cairo_set_dash);
@@ -329,10 +329,10 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "devicetouser", cairo_device_to_user);
 		Register(State, "devicetouserdistance", cairo_device_to_user_distance);
 	});
-	SetMetatableGarbageCollector(State, ToVoidPointer(cairo_create), cairo_destroy);
+	SetMetatableGarbageCollector(State, AsUID(cairo_create), cairo_destroy);
 	Register(State, "context", cairo_create);
 
-	CreateMetatable(State, ToVoidPointer(&PatternMetatable), [&](void)
+	CreateMetatable(State, (UID)PatternMetatable, [&](void)
 	{
 		Register(State, "status", cairo_pattern_status);
 		Register(State, "setextend", cairo_pattern_set_extend);
@@ -362,7 +362,7 @@ inline void RegisterEverything(lua_State *State)
 		//RegisterMultipleReturn(State, "getcolorstoprgba", cairo_pattern_get_color_stop_rgba); // Same as above
 		
 		// Surface patterns only
-		RegisterWithMetatable(State, "getsurface", cairo_pattern_get_surface, ToVoidPointer(cairo_surface_create_similar));
+		RegisterWithMetatable(State, "getsurface", cairo_pattern_get_surface, AsUID(cairo_surface_create_similar));
 		// Mesh patterns only
 		/*Register(State, "beginpatch", cairo_mesh_pattern_begin_patch);
 		Register(State, "endpatch", cairo_mesh_pattern_end_patch);
@@ -377,21 +377,21 @@ inline void RegisterEverything(lua_State *State)
 		RegisterMultipleReturn(State, "getcontrolpoint", cairo_mesh_pattern_get_control_point);
 		RegisterMultipleReturn(State, "getcornercolorrgba", cairo_mesh_pattern_get_corner_color_rgba); */
 	});
-	SetMetatableGarbageCollector(State, ToVoidPointer(&PatternMetatable), cairo_pattern_destroy);
+	SetMetatableGarbageCollector(State, (UID)PatternMetatable, cairo_pattern_destroy);
 
-	RegisterWithMetatable(State, "rgbpattern", cairo_pattern_create_rgb, ToVoidPointer(&PatternMetatable));
-	RegisterWithMetatable(State, "rgbapattern", cairo_pattern_create_rgba, ToVoidPointer(&PatternMetatable));
+	RegisterWithMetatable(State, "rgbpattern", cairo_pattern_create_rgb, (UID)PatternMetatable);
+	RegisterWithMetatable(State, "rgbapattern", cairo_pattern_create_rgba, (UID)PatternMetatable);
 		
-	RegisterWithMetatable(State, "linearpattern", cairo_pattern_create_linear, ToVoidPointer(&PatternMetatable));
+	RegisterWithMetatable(State, "linearpattern", cairo_pattern_create_linear, (UID)PatternMetatable);
 		
-	RegisterWithMetatable(State, "radialpattern", cairo_pattern_create_radial, ToVoidPointer(&PatternMetatable));
+	RegisterWithMetatable(State, "radialpattern", cairo_pattern_create_radial, (UID)PatternMetatable);
 		
-	RegisterWithMetatable(State, "surfacepattern", cairo_pattern_create_for_surface, ToVoidPointer(&PatternMetatable));
+	RegisterWithMetatable(State, "surfacepattern", cairo_pattern_create_for_surface, (UID)PatternMetatable);
 		
-	//RegisterWithMetatable(State, "createmesh", cairo_pattern_create_mesh, ToVoidPointer(&PatternMetatable)); // 1.12 
+	//RegisterWithMetatable(State, "createmesh", cairo_pattern_create_mesh, (UID)PatternMetatable); // 1.12 
 
 	// Regions
-	CreateMetatable(State, ToVoidPointer(cairo_region_create), [&](void)
+	CreateMetatable(State, AsUID(cairo_region_create), [&](void)
 	{
 		Register(State, "copy", cairo_region_copy);
 		Register(State, "status", cairo_region_status);
@@ -412,13 +412,13 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "xor", cairo_region_xor);
 		Register(State, "xorrectangle", cairo_region_xor_rectangle);
 	});
-	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_region_create), cairo_region_destroy);
+	SetMetatableGarbageCollector(State, AsUID(cairo_region_create), cairo_region_destroy);
 	Register(State, "region", cairo_region_create);
-	RegisterWithMetatable(State, "rectanglecairoregion", cairo_region_create_rectangle, ToVoidPointer(cairo_region_create));
-	RegisterWithMetatable(State, "cairoregionfromrectangles", cairo_region_create_rectangles, ToVoidPointer(cairo_region_create));
+	RegisterWithMetatable(State, "rectanglecairoregion", cairo_region_create_rectangle, AsUID(cairo_region_create));
+	RegisterWithMetatable(State, "cairoregionfromrectangles", cairo_region_create_rectangles, AsUID(cairo_region_create));
 
 	// Matrices
-	CreateMetatable(State, ToVoidPointer(CreateMatrix), [&](void)
+	CreateMetatable(State, AsUID(CreateMatrix), [&](void)
 	{
 		Register(State, "init", cairo_matrix_init);
 		Register(State, "initidentity", cairo_matrix_init_identity);
@@ -433,24 +433,24 @@ inline void RegisterEverything(lua_State *State)
 		RegisterInputOutput(State, "transformdistance", cairo_matrix_transform_distance);
 		RegisterInputOutput(State, "transformpoint", cairo_matrix_transform_point);
 	});
-	SetMetatableGarbageCollector(State, ToVoidPointer(CreateMatrix), DestroyMatrix);
+	SetMetatableGarbageCollector(State, AsUID(CreateMatrix), DestroyMatrix);
 	Register(State, "matrix", CreateMatrix);
-	RegisterWithMetatable(State, "identitymatrix", CreateIdentityMatrix, ToVoidPointer(CreateMatrix));
-	RegisterWithMetatable(State, "translatematrix", CreateTranslateMatrix, ToVoidPointer(CreateMatrix));
-	RegisterWithMetatable(State, "scalematrix", CreateScaleMatrix, ToVoidPointer(CreateMatrix));
-	RegisterWithMetatable(State, "rotatematrix", CreateRotateMatrix, ToVoidPointer(CreateMatrix));
+	RegisterWithMetatable(State, "identitymatrix", CreateIdentityMatrix, AsUID(CreateMatrix));
+	RegisterWithMetatable(State, "translatematrix", CreateTranslateMatrix, AsUID(CreateMatrix));
+	RegisterWithMetatable(State, "scalematrix", CreateScaleMatrix, AsUID(CreateMatrix));
+	RegisterWithMetatable(State, "rotatematrix", CreateRotateMatrix, AsUID(CreateMatrix));
 	
-	CreateMetatable(State, ToVoidPointer(cairo_surface_create_similar), [&](void)
+	CreateMetatable(State, AsUID(cairo_surface_create_similar), [&](void)
 	{
 		RegisterSurfaceMethods(State);
 	});
-	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_surface_create_similar), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, AsUID(cairo_surface_create_similar), cairo_surface_destroy);
 	Register(State, "similarsurface", cairo_surface_create_similar);
-	//RegisterWithMetatable(State, "similarimagesurface", cairo_surface_create_similar_image, ToVoidPointer(cairo_surface_create_similar)); // 1.12
-	RegisterWithMetatable(State, "rectanglesurface", cairo_surface_create_for_rectangle, ToVoidPointer(cairo_surface_create_similar));
+	//RegisterWithMetatable(State, "similarimagesurface", cairo_surface_create_similar_image, AsUID(cairo_surface_create_similar)); // 1.12
+	RegisterWithMetatable(State, "rectanglesurface", cairo_surface_create_for_rectangle, AsUID(cairo_surface_create_similar));
 
 #ifdef CAIRO_HAS_IMAGE_SURFACE
-	CreateMetatable(State, ToVoidPointer(cairo_image_surface_create), [&](void)
+	CreateMetatable(State, AsUID(cairo_image_surface_create), [&](void)
 	{
 		RegisterSurfaceMethods(State);
 		Register(State, "getdata", cairo_image_surface_get_data);
@@ -459,27 +459,27 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "getheight", cairo_image_surface_get_height);
 		Register(State, "getstride", cairo_image_surface_get_stride);
 	});
-	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_image_surface_create), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, AsUID(cairo_image_surface_create), cairo_surface_destroy);
 	Register(State, "imagesurface", cairo_image_surface_create);
 #endif
 
 #ifdef CAIRO_HAS_PNG_FUNCTIONS
-	CreateMetatable(State, ToVoidPointer(cairo_image_surface_create_from_png), [&](void)
+	CreateMetatable(State, AsUID(cairo_image_surface_create_from_png), [&](void)
 	{
 		RegisterSurfaceMethods(State);
 	});
-	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_image_surface_create_from_png), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, AsUID(cairo_image_surface_create_from_png), cairo_surface_destroy);
 	Register(State, "imagesurfacefrompng", cairo_image_surface_create_from_png);
 #endif
 
 #ifdef CAIRO_HAS_RECORDING_SURFACE
-	CreateMetatable(State, ToVoidPointer(cairo_recording_surface_create), [&](void)
+	CreateMetatable(State, AsUID(cairo_recording_surface_create), [&](void)
 	{
 		RegisterSurfaceMethods(State);
 		RegisterMultipleReturn(State, "inkextents", cairo_recording_surface_ink_extents);
 		//Register(State, "getextents", cairo_recording_surface_get_extents); // 1.12
 	});
-	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_recording_surface_create), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, AsUID(cairo_recording_surface_create), cairo_surface_destroy);
 	Register(State, "recordingsurface", cairo_recording_surface_create);
 #endif
 
@@ -489,12 +489,12 @@ inline void RegisterEverything(lua_State *State)
 		{"12", CAIRO_SVG_VERSION_1_2},
 	});
 
-	CreateMetatable(State, ToVoidPointer(cairo_svg_surface_create), [&](void)
+	CreateMetatable(State, AsUID(cairo_svg_surface_create), [&](void)
 	{
 		RegisterSurfaceMethods(State);
 		Register(State, "restricttoversion", cairo_svg_surface_restrict_to_version);
 	});
-	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_svg_surface_create), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, AsUID(cairo_svg_surface_create), cairo_surface_destroy);
 	Register(State, "svgsurface", cairo_svg_surface_create);
 #endif
 
