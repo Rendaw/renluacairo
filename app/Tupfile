@@ -1,5 +1,5 @@
-local CompileBase = 'g++-4.7 -Wall -Wextra -pedantic --std=c++11 -ggdb -O0 -c -fPIC -fpic '
-local LinkBase = 'g++-4.7 '
+local CompileBase = '/usr/local/bin/g++-git -Wall -Wextra -pedantic --std=c++11 -ggdb -O0 -c -fPIC -fpic '
+local LinkBase = '/usr/local/bin/g++-git '
 
 tup.definerule
 {

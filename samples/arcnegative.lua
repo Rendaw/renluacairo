@@ -9,6 +9,7 @@ local radius = 100.0
 local angle1 = 45.0  * (math.pi/180.0)  -- angles are specified
 local angle2 = 180.0 * (math.pi/180.0)  -- in radians
 
+context:setsourcergba(1, 1, 1, 1)
 context:setlinewidth(10.0)
 context:arcnegative(xc, yc, radius, angle1, angle2)
 context:stroke()

@@ -3,11 +3,16 @@ require "cairo"
 local surface = cairo.imagesurface(cairo.format.RGB24, 256, 256)
 local context = cairo.context(surface)
 
-local x=25.6,  y=128.0
-local x1=102.4, y1=230.4,
-      x2=153.6, y2=25.6,
-      x3=230.4, y3=128.0
+local x=25.6
+local y=128.0
+local x1=102.4
+local y1=230.4
+local x2=153.6
+local y2=25.6
+local x3=230.4
+local y3=128.0
 
+context:setsourcergba(1, 1, 1, 1)
 context:moveto(x, y)
 context:curveto(x1, y1, x2, y2, x3, y3)
 

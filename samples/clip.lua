@@ -3,6 +3,7 @@ require "cairo"
 local surface = cairo.imagesurface(cairo.format.RGB24, 256, 256)
 local context = cairo.context(surface)
 
+context:setsourcergba(1, 1, 1, 1)
 context:arc(128.0, 128.0, 76.8, 0, 2 * math.pi)
 context:clip(cr)
 
