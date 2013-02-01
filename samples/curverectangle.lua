@@ -4,19 +4,20 @@ local surface = cairo.imagesurface(cairo.format.RGB24, 256, 256)
 local context = cairo.context(surface)
 
 -- a custom shape that could be wrapped in a function
-local x0      = 25.6,   -- parameters like context:rectangle
-      y0      = 25.6,
-      rectwidth  = 204.8,
-      rectheight = 204.8,
-      radius = 102.4   -- and an approximate curvature radius
+local x0      = 25.6   -- parameters like context:rectangle
+local y0      = 25.6
+local rectwidth  = 204.8
+local rectheight = 204.8
+local radius = 102.4   -- and an approximate curvature radius
 
-local x1,y1
+local x1
+local y1
 
 x1=x0+rectwidth
 y1=y0+rectheight
-if(!rectwidth || !rectheight)
+if rectwidth == 0 or rectheight == 0 then
     return
-if rectwidth/2<radius then
+elseif rectwidth/2<radius then
     if rectheight/2<radius then
         context:moveto(x0,(y0 + y1)/2)
         context:curveto(x0 ,y0, x0, y0,(x0 + x1)/2, y0)
