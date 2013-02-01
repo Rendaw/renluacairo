@@ -60,9 +60,9 @@ inline void RegisterSurfaceMethods(lua_State *State)
 	Register(State, "markdirty", cairo_surface_mark_dirty);
 	Register(State, "markdirtyrectangle", cairo_surface_mark_dirty_rectangle);
 	Register(State, "setdeviceoffset", cairo_surface_set_device_offset);
-	MultipleReturn::Register(State, "getdeviceoffset", cairo_surface_get_device_offset);
+	RegisterMultipleReturn(State, "getdeviceoffset", cairo_surface_get_device_offset);
 	Register(State, "setfallbackresolution", cairo_surface_set_fallback_resolution);
-	MultipleReturn::Register(State, "getfallbackresolution", cairo_surface_get_fallback_resolution);
+	RegisterMultipleReturn(State, "getfallbackresolution", cairo_surface_get_fallback_resolution);
 	Register(State, "gettype", cairo_surface_get_type);
 	//Register(State, "getreferencecount", cairo_surface_get_reference_count); // Useful?
 	//Register(State, "setuserdata", cairo_surface_set_user_data); // Not useful?
@@ -232,9 +232,8 @@ inline void RegisterEverything(lua_State *State)
 		{"RGB16565", CAIRO_FORMAT_RGB16_565}
 	});
 	
-	/*CreateMetatable(State, ToVoidPointer(cairo_copy_clip_rectangle_list), [](void) {});
-	SetMetatableGarbageCollector(State, ToVoidPointer(cairo_copy_clip_rectangle_list), DestroyRectangleList);*/
-
+	static char PatternMetatable;
+	
 	CreateMetatable(State, ToVoidPointer(cairo_create), [&](void)
 	{
 		//Register(State, "reference", cairo_reference); // Useful?
@@ -252,7 +251,7 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "setsourcergba", cairo_set_source_rgba);
 		Register(State, "setsource", cairo_set_source);
 		Register(State, "setsourcesurface", cairo_set_source_surface);
-		//Register(State, "getsource", cairo_get_source);
+		RegisterWithMetatable(State, "getsource", Reference(cairo_get_source, cairo_pattern_reference), ToVoidPointer(&PatternMetatable));
 		Register(State, "setantialias", cairo_set_antialias);
 		Register(State, "getantialias", cairo_get_antialias);
 		Register(State, "setdash", cairo_set_dash);
@@ -274,14 +273,14 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "gettolerance", cairo_get_tolerance);
 		Register(State, "clip", cairo_clip);
 		Register(State, "clippreserve", cairo_clip_preserve);
-		MultipleReturn::Register(State, "clipextents", cairo_clip_extents);
+		RegisterMultipleReturn(State, "clipextents", cairo_clip_extents);
 		Register(State, "inclip", cairo_in_clip);
 		Register(State, "resetclip", cairo_reset_clip);
 		//Register(State, "rectanglelistdestroy", cairo_rectangle_list_destroy); // Needs custom lua wrapper for array information
 		//Register(State, "copycliprectanglelist", cairo_copy_clip_rectangle_list); // ""
 		Register(State, "fill", cairo_fill);
 		Register(State, "fillpreserve", cairo_fill_preserve);
-		MultipleReturn::Register(State, "fillextents", cairo_fill_extents);
+		RegisterMultipleReturn(State, "fillextents", cairo_fill_extents);
 		Register(State, "infill", cairo_in_fill);
 		Register(State, "mask", cairo_mask);
 		Register(State, "masksurface", cairo_mask_surface);
@@ -289,13 +288,10 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "paintwithalpha", cairo_paint_with_alpha);
 		Register(State, "stroke", cairo_stroke);
 		Register(State, "strokepreserve", cairo_stroke_preserve);
-		MultipleReturn::Register(State, "strokeextents", cairo_stroke_extents);
+		RegisterMultipleReturn(State, "strokeextents", cairo_stroke_extents);
 		Register(State, "instroke", cairo_in_stroke);
 		Register(State, "copypage", cairo_copy_page);
 		Register(State, "showpage", cairo_show_page);
-		//Register(State, "getreferencecount", cairo_get_reference_count); // Useful?
-		//Register(State, "setuserdata", cairo_set_user_data); // Is this useful?
-		//Register(State, "getuserdata", cairo_get_user_data); // Is this useful?
 
 		// Path methods
 		Register(State, "copypath", cairo_copy_path);
@@ -318,7 +314,7 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "relcurveto", cairo_rel_curve_to);
 		Register(State, "rellineto", cairo_rel_line_to);
 		Register(State, "relmoveto", cairo_rel_move_to);
-		MultipleReturn::Register(State, "pathextents", cairo_path_extents);
+		RegisterMultipleReturn(State, "pathextents", cairo_path_extents);
 
 		// Transformation methods
 		Register(State, "translate", cairo_translate);
@@ -333,10 +329,9 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "devicetouser", cairo_device_to_user);
 		Register(State, "devicetouserdistance", cairo_device_to_user_distance);
 	});
-	//SetMetatableGarbageCollector(State, ToVoidPointer(cairo_create), cairo_destroy);
+	SetMetatableGarbageCollector(State, ToVoidPointer(cairo_create), cairo_destroy);
 	Register(State, "context", cairo_create);
 
-	static char PatternMetatable;
 	CreateMetatable(State, ToVoidPointer(&PatternMetatable), [&](void)
 	{
 		Register(State, "status", cairo_pattern_status);
@@ -348,28 +343,26 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "getmatrix", cairo_pattern_get_matrix);
 		Register(State, "gettype", cairo_pattern_get_type);
 		Register(State, "getreferencecount", cairo_pattern_get_reference_count);
-		//Register(State, "setuserdata", cairo_pattern_set_user_data); // Useful?
-		//Register(State, "getuserdata", cairo_pattern_get_user_data); // Useful?
 		
 		// RGB patterns only	
-		MultipleReturn::Register(State, "getrgba", cairo_pattern_get_rgba);
+		RegisterMultipleReturn(State, "getrgba", cairo_pattern_get_rgba);
 			
 		// Linear patterns only
-		MultipleReturn::Register(State, "getlinearpoints", cairo_pattern_get_linear_points);
+		RegisterMultipleReturn(State, "getlinearpoints", cairo_pattern_get_linear_points);
 		Register(State, "addcolorstoprgb", cairo_pattern_add_color_stop_rgb);
 		Register(State, "addcolorstoprgba", cairo_pattern_add_color_stop_rgba);
-		MultipleReturn::Register(State, "getcolorstopcount", cairo_pattern_get_color_stop_count);
-		//MultipleReturn::Register(State, "getcolorstoprgba", cairo_pattern_get_color_stop_rgba); // Need new specialization for 1 input bunch of outputs?
+		RegisterMultipleReturn(State, "getcolorstopcount", cairo_pattern_get_color_stop_count);
+		//RegisterMultipleReturn(State, "getcolorstoprgba", cairo_pattern_get_color_stop_rgba); // Need new specialization for 1 input bunch of outputs?
 		
 		// Radial patterns only
-		MultipleReturn::Register(State, "getradialcircles", cairo_pattern_get_radial_circles);
+		RegisterMultipleReturn(State, "getradialcircles", cairo_pattern_get_radial_circles);
 		Register(State, "addcolorstoprgb", cairo_pattern_add_color_stop_rgb);
 		Register(State, "addcolorstoprgba", cairo_pattern_add_color_stop_rgba);
-		MultipleReturn::Register(State, "getcolorstopcount", cairo_pattern_get_color_stop_count);
-		//MultipleReturn::Register(State, "getcolorstoprgba", cairo_pattern_get_color_stop_rgba); // Same as above
+		RegisterMultipleReturn(State, "getcolorstopcount", cairo_pattern_get_color_stop_count);
+		//RegisterMultipleReturn(State, "getcolorstoprgba", cairo_pattern_get_color_stop_rgba); // Same as above
 		
 		// Surface patterns only
-		Register(State, "getsurface", cairo_pattern_get_surface, ToVoidPointer(cairo_surface_create_similar));
+		RegisterWithMetatable(State, "getsurface", cairo_pattern_get_surface, ToVoidPointer(cairo_surface_create_similar));
 		// Mesh patterns only
 		/*Register(State, "beginpatch", cairo_mesh_pattern_begin_patch);
 		Register(State, "endpatch", cairo_mesh_pattern_end_patch);
@@ -379,23 +372,23 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "setcontrolpoint", cairo_mesh_pattern_set_control_point);
 		Register(State, "setcornercolorrgb", cairo_mesh_pattern_set_corner_color_rgb);
 		Register(State, "setcornercolorrgba", cairo_mesh_pattern_set_corner_color_rgba);
-		MultipleReturn::Register(State, "getpatchcount", cairo_mesh_pattern_get_patch_count);
+		RegisterMultipleReturn(State, "getpatchcount", cairo_mesh_pattern_get_patch_count);
 		Register(State, "getpath", cairo_mesh_pattern_get_path);
-		MultipleReturn::Register(State, "getcontrolpoint", cairo_mesh_pattern_get_control_point);
-		MultipleReturn::Register(State, "getcornercolorrgba", cairo_mesh_pattern_get_corner_color_rgba); */
+		RegisterMultipleReturn(State, "getcontrolpoint", cairo_mesh_pattern_get_control_point);
+		RegisterMultipleReturn(State, "getcornercolorrgba", cairo_mesh_pattern_get_corner_color_rgba); */
 	});
-	//SetMetatableGarbageCollector(State, ToVoidPointer(&PatternMetatable), cairo_pattern_destroy);
+	SetMetatableGarbageCollector(State, ToVoidPointer(&PatternMetatable), cairo_pattern_destroy);
 
-	Register(State, "rgbpattern", cairo_pattern_create_rgb, ToVoidPointer(&PatternMetatable));
-	Register(State, "rgbapattern", cairo_pattern_create_rgba, ToVoidPointer(&PatternMetatable));
+	RegisterWithMetatable(State, "rgbpattern", cairo_pattern_create_rgb, ToVoidPointer(&PatternMetatable));
+	RegisterWithMetatable(State, "rgbapattern", cairo_pattern_create_rgba, ToVoidPointer(&PatternMetatable));
 		
-	Register(State, "linearpattern", cairo_pattern_create_linear, ToVoidPointer(&PatternMetatable));
+	RegisterWithMetatable(State, "linearpattern", cairo_pattern_create_linear, ToVoidPointer(&PatternMetatable));
 		
-	Register(State, "radialpattern", cairo_pattern_create_radial, ToVoidPointer(&PatternMetatable));
+	RegisterWithMetatable(State, "radialpattern", cairo_pattern_create_radial, ToVoidPointer(&PatternMetatable));
 		
-	Register(State, "surfacepattern", cairo_pattern_create_for_surface, ToVoidPointer(&PatternMetatable));
+	RegisterWithMetatable(State, "surfacepattern", cairo_pattern_create_for_surface, ToVoidPointer(&PatternMetatable));
 		
-	//Register(State, "createmesh", cairo_pattern_create_mesh, ToVoidPointer(&PatternMetatable)); // 1.12 
+	//RegisterWithMetatable(State, "createmesh", cairo_pattern_create_mesh, ToVoidPointer(&PatternMetatable)); // 1.12 
 
 	// Regions
 	CreateMetatable(State, ToVoidPointer(cairo_region_create), [&](void)
@@ -419,10 +412,10 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "xor", cairo_region_xor);
 		Register(State, "xorrectangle", cairo_region_xor_rectangle);
 	});
-	//SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_region_create), cairo_region_destroy);
+	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_region_create), cairo_region_destroy);
 	Register(State, "region", cairo_region_create);
-	Register(State, "rectanglecairoregion", cairo_region_create_rectangle, ToVoidPointer(cairo_region_create));
-	Register(State, "cairoregionfromrectangles", cairo_region_create_rectangles, ToVoidPointer(cairo_region_create));
+	RegisterWithMetatable(State, "rectanglecairoregion", cairo_region_create_rectangle, ToVoidPointer(cairo_region_create));
+	RegisterWithMetatable(State, "cairoregionfromrectangles", cairo_region_create_rectangles, ToVoidPointer(cairo_region_create));
 
 	// Matrices
 	CreateMetatable(State, ToVoidPointer(CreateMatrix), [&](void)
@@ -437,24 +430,24 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "rotate", cairo_matrix_rotate);
 		Register(State, "invert", cairo_matrix_invert);
 		Register(State, "multiply", cairo_matrix_multiply);
-		InputOutput::Register(State, "transformdistance", cairo_matrix_transform_distance); // TODO Input/output
-		InputOutput::Register(State, "transformpoint", cairo_matrix_transform_point); // TODO Input/output
+		RegisterInputOutput(State, "transformdistance", cairo_matrix_transform_distance);
+		RegisterInputOutput(State, "transformpoint", cairo_matrix_transform_point);
 	});
 	SetMetatableGarbageCollector(State, ToVoidPointer(CreateMatrix), DestroyMatrix);
 	Register(State, "matrix", CreateMatrix);
-	Register(State, "identitymatrix", CreateIdentityMatrix, ToVoidPointer(CreateMatrix));
-	Register(State, "translatematrix", CreateTranslateMatrix, ToVoidPointer(CreateMatrix));
-	Register(State, "scalematrix", CreateScaleMatrix, ToVoidPointer(CreateMatrix));
-	Register(State, "rotatematrix", CreateRotateMatrix, ToVoidPointer(CreateMatrix));
+	RegisterWithMetatable(State, "identitymatrix", CreateIdentityMatrix, ToVoidPointer(CreateMatrix));
+	RegisterWithMetatable(State, "translatematrix", CreateTranslateMatrix, ToVoidPointer(CreateMatrix));
+	RegisterWithMetatable(State, "scalematrix", CreateScaleMatrix, ToVoidPointer(CreateMatrix));
+	RegisterWithMetatable(State, "rotatematrix", CreateRotateMatrix, ToVoidPointer(CreateMatrix));
 	
 	CreateMetatable(State, ToVoidPointer(cairo_surface_create_similar), [&](void)
 	{
 		RegisterSurfaceMethods(State);
 	});
-	//SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_surface_create_similar), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_surface_create_similar), cairo_surface_destroy);
 	Register(State, "similarsurface", cairo_surface_create_similar);
-	//Register(State, "similarimagesurface", cairo_surface_create_similar_image, ToVoidPointer(cairo_surface_create_similar)); // 1.12
-	Register(State, "rectanglesurface", cairo_surface_create_for_rectangle, ToVoidPointer(cairo_surface_create_similar));
+	//RegisterWithMetatable(State, "similarimagesurface", cairo_surface_create_similar_image, ToVoidPointer(cairo_surface_create_similar)); // 1.12
+	RegisterWithMetatable(State, "rectanglesurface", cairo_surface_create_for_rectangle, ToVoidPointer(cairo_surface_create_similar));
 
 #ifdef CAIRO_HAS_IMAGE_SURFACE
 	CreateMetatable(State, ToVoidPointer(cairo_image_surface_create), [&](void)
@@ -466,7 +459,7 @@ inline void RegisterEverything(lua_State *State)
 		Register(State, "getheight", cairo_image_surface_get_height);
 		Register(State, "getstride", cairo_image_surface_get_stride);
 	});
-	//SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_image_surface_create), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_image_surface_create), cairo_surface_destroy);
 	Register(State, "imagesurface", cairo_image_surface_create);
 #endif
 
@@ -475,7 +468,7 @@ inline void RegisterEverything(lua_State *State)
 	{
 		RegisterSurfaceMethods(State);
 	});
-	//SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_image_surface_create_from_png), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_image_surface_create_from_png), cairo_surface_destroy);
 	Register(State, "imagesurfacefrompng", cairo_image_surface_create_from_png);
 #endif
 
@@ -483,10 +476,10 @@ inline void RegisterEverything(lua_State *State)
 	CreateMetatable(State, ToVoidPointer(cairo_recording_surface_create), [&](void)
 	{
 		RegisterSurfaceMethods(State);
-		MultipleReturn::Register(State, "inkextents", cairo_recording_surface_ink_extents);
+		RegisterMultipleReturn(State, "inkextents", cairo_recording_surface_ink_extents);
 		//Register(State, "getextents", cairo_recording_surface_get_extents); // 1.12
 	});
-	//SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_recording_surface_create), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_recording_surface_create), cairo_surface_destroy);
 	Register(State, "recordingsurface", cairo_recording_surface_create);
 #endif
 
@@ -501,7 +494,7 @@ inline void RegisterEverything(lua_State *State)
 		RegisterSurfaceMethods(State);
 		Register(State, "restricttoversion", cairo_svg_surface_restrict_to_version);
 	});
-	//SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_svg_surface_create), cairo_surface_destroy);
+	SetMetatableGarbageCollector(State, ToVoidPointer(&cairo_svg_surface_create), cairo_surface_destroy);
 	Register(State, "svgsurface", cairo_svg_surface_create);
 #endif
 
