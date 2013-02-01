@@ -46,23 +46,6 @@ template <typename... Done> struct ReverseTuple<std::tuple<>, std::tuple<Done...
 	typedef std::tuple<Done...> Tuple;
 };
 
-/*static_assert(sizeof(void (*)(void)) == sizeof(void *), "Function and data pointers are of different sizes.  We need to store function pointers as data pointers in Lua.");
-template <typename Type> void *ToVoidPointer(Type In) 
-{
-	static_assert(sizeof(Type) == sizeof(void *), "Unsafe pointer conversion.");
-	void *Out; 
-	*reinterpret_cast<Type *>(&Out) = In;
-	return Out; 
-}
-
-template <typename Type> Type FromVoidPointer(void *In) 
-{ 
-	static_assert(sizeof(Type) == sizeof(void *), "Unsafe pointer conversion.");
-	Type Out; 
-	*reinterpret_cast<void **>(&Out) = In;
-	return Out; 
-}*/
-
 template <typename Type> size_t TypeIDLength(void)
 {
 	static const size_t Length = strlen(typeid(Type).name());
@@ -393,43 +376,15 @@ namespace SingleReturn
 			UID TypeUID;
 			if (lua_isuserdata(State, lua_upvalueindex(1)))
 				TypeUID = (UID)lua_touserdata(State, lua_upvalueindex(1));
-			//else TypeUID = AsUID(Function);
+			//else TypeUID = AsUID(Function); // Crashes on g++-4.8 git right now
 			else TypeUID = (UID)Function;
+			//else TypeUID = 0; // DON'T USE.  You will know to use this when the time is right.
 			LuaValue<ReturnType>::Write(State, TypeUID, ReturnValue);
 			return 1;
 		}
 	};
 
 	// Void return specializations
-	/*template 
-	<
-		typename FunctionType, 
-		FunctionType *Function,
-		typename UnreadType, 
-		typename... OtherUnreadTypes, 
-		typename... ReadTypes
-	> struct CallWrapper<FunctionType, Function, void, std::tuple<UnreadType, OtherUnreadTypes...>, std::tuple<ReadTypes...> >
-	{
-		static void Call(lua_State *State, int Position, ReadTypes... ReadValues)
-		{
-			CallWrapper<FunctionType, Function, void, std::tuple<OtherUnreadTypes...>, std::tuple<ReadTypes..., UnreadType> >::Call(
-				State, Position + 1, ReadValues..., LuaValue<UnreadType>::Read(State, Position));
-		}
-	};
-
-	template
-	<
-		typename FunctionType,
-		FunctionType *Function,
-		typename... ReadTypes
-	> struct CallWrapper<FunctionType, Function, void, std::tuple<>, std::tuple<ReadTypes...> >
-	{
-		static void Call(lua_State *, int, ReadTypes... ReadValues)
-		{
-			Function(ReadValues...);
-		}
-	};*/
-
 	template 
 	<
 		typename... ArgumentTypes, 
@@ -586,46 +541,6 @@ namespace MultipleReturn
 	};
 	
 	// Void return type specializations
-	/*template 
-	<
-		bool Initialize,
-		typename FunctionType,
-		FunctionType *Function,
-		typename InputType,
-		typename UnallocatedType,
-		typename... UnallocatedTypes,
-		typename... OutputTypes
-	> struct CallWrapper<
-		Initialize, 
-		FunctionType, 
-		Function,
-		void,
-		InputType, 
-		std::tuple<UnallocatedType *, UnallocatedTypes...>, 
-		std::tuple<OutputTypes...> > 
-	{
-		static unsigned int Call(lua_State *State, InputType const &Input, unsigned int Count, OutputTypes... AllocatedPointers)
-		{
-			UnallocatedType Storage;
-			if (Initialize)
-			{
-				Storage = LuaValue<UnallocatedType>::Read(State, -1);
-				lua_pop(State, 1);
-			}
-			unsigned int Read = CallWrapper<
-				Initialize,
-				FunctionType, 
-				Function,
-				void,
-				InputType,
-				std::tuple<UnallocatedTypes...>, 
-				std::tuple<UnallocatedType *, OutputTypes...> 
-				>::Call(State, Input, Count + 1, &Storage, AllocatedPointers...);
-			LuaValue<UnallocatedType>::Write(State, nullptr, Storage);
-			return Read;
-		}
-	};*/
-
 	template
 	<
 		bool Initialize,
